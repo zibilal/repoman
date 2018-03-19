@@ -7,5 +7,5 @@ type DatabaseContextBuilder interface {
 
 type DatabaseContext interface{
 	Db() interface{}
-	Tx() interface{}
+	IsTransaction() bool
 }
