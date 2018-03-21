@@ -1,6 +1,10 @@
 package sqlxpersistence
 
-import "github.com/jmoiron/sqlx"
+import (
+	"fmt"
+	"github.com/jmoiron/sqlx"
+	"database/sql"
+)
 
 type DbSqlxContextBuilder struct {
 	connectionString string
@@ -34,7 +38,9 @@ func (d *DbSqlxContextBuilder) Build() *DbSqlxContext {
 }
 
 type DbSqlxContext struct {
-	db *sqlx.DB
+	db            *sqlx.DB
+	tx            *sql.Tx
+	isTransaction bool
 }
 
 func NewDbMySqlxContext(db *sqlx.DB) *DbSqlxContext {
@@ -44,6 +50,33 @@ func NewDbMySqlxContext(db *sqlx.DB) *DbSqlxContext {
 	return theDb
 }
 
+func (m *DbSqlxContext) SetTransaction(isTransaction bool) {
+	m.isTransaction = isTransaction
+
+	if m.isTransaction {
+		tx, err := m.db.Begin()
+
+		if err != nil {
+			tmp := fmt.Sprintf("failed to beginning transaction, due to %s", err.Error())
+			panic(tmp)
+		}
+
+		m.tx = tx
+	}
+}
+
+func (m *DbSqlxContext) IsTransaction() bool {
+	return m.isTransaction
+}
+
 func (m *DbSqlxContext) Db() interface{} {
 	return m.db
+}
+
+func (m *DbSqlxContext) Commit() error {
+	return m.tx.Commit()
+}
+
+func (m *DbSqlxContext) Rollback() error {
+	return m.tx.Rollback()
 }

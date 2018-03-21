@@ -7,5 +7,8 @@ type DatabaseContextBuilder interface {
 
 type DatabaseContext interface{
 	Db() interface{}
+	SetTransaction(bool)
 	IsTransaction() bool
+	Commit() error
+	Rollback() error
 }
