@@ -73,6 +73,15 @@ func (m *DbSqlxContext) Db() interface{} {
 	return m.db
 }
 
+func (m *DbSqlxContext) Begin() interface{} {
+	tx, err := m.db.Begin()
+	if err != nil {
+		panic("failed to begin a transaction, error: " + err.Error())
+	}
+
+	return tx
+}
+
 func (m *DbSqlxContext) Commit() error {
 	return m.tx.Commit()
 }

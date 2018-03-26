@@ -1,46 +1,49 @@
 package repoman
 
 import (
-	"github.com/zibilal/repoman/persistence"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/zibilal/repoman/persistence"
 )
 
 type Repository interface {
 	Finder
 	Updater
 	Creator
+	QueryMapper
+}
+
+type QueryMapper interface {
+	AddQuery(string, string)
+	GetQuery(string) string
 }
 
 type Finder interface {
-	Find(dbContext persistence.DatabaseContext, output interface{}) (interface{}, error)
+	Find(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
 }
 
 type Updater interface {
-	Update(dbContext persistence.DatabaseContext, input interface{}) (interface{}, error)
+	Update(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
 }
 
 type Creator interface {
-	Create(dbContext persistence.DatabaseContext, input interface{}) (interface{}, error)
+	Create(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
 }
 
 type Deleter interface {
-	Delete(dbContext persistence.DatabaseContext, input interface{}) (interface{}, error)
+	Delete(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
 }
 
-type Query interface {
-	Execute(query string, input ...interface{}) (interface{}, error)
-}
-
-type RepoFunc func(context persistence.DatabaseContext, data interface{}) (interface{}, error)
+type RepoFunc func(context persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
 
 type ExecuteQueryOutput struct {
 	Output map[int]interface{}
 }
 
 type ExecuteQueryInput struct {
-	Data    interface{}
-	Handler RepoFunc
+	Data      []interface{}
+	QueryName string
+	Handler   RepoFunc
 }
 
 func ExecuteQueryHandlerFunc(dbContext persistence.DatabaseContext, inputs ...ExecuteQueryInput) (*ExecuteQueryOutput, error) {
@@ -56,7 +59,7 @@ func ExecuteQueryHandlerFunc(dbContext persistence.DatabaseContext, inputs ...Ex
 	outputMap = make(map[int]interface{})
 
 	for idx, input := range inputs {
-		tmp, err = input.Handler(dbContext, input.Data)
+		tmp, err = input.Handler(dbContext, input.QueryName, input.Data...)
 
 		if dbContext.IsTransaction() && err != nil {
 			tmpError = dbContext.Rollback()

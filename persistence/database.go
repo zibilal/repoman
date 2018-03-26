@@ -9,6 +9,7 @@ type DatabaseContext interface{
 	Db() interface{}
 	SetTransaction(bool)
 	IsTransaction() bool
+	Begin() interface{}
 	Commit() error
 	Rollback() error
 }
