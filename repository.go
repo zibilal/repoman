@@ -19,7 +19,7 @@ type QueryMapper interface {
 }
 
 type Finder interface {
-	Find(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
+	Find(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{},  error)
 }
 
 type Updater interface {
