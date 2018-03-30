@@ -2,8 +2,9 @@ package sqlxpersistence
 
 import (
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"database/sql"
+	_ "github.com/lib/pq"
 )
 
 type DbSqlxContextBuilder struct {
@@ -18,7 +19,8 @@ func NewDbSqlxContextBuilder() *DbSqlxContextBuilder {
 	return db
 }
 
-func (d *DbSqlxContextBuilder) Connect(connectionString string) *DbSqlxContextBuilder {
+func (d *DbSqlxContextBuilder) Connect(driver, connectionString string) *DbSqlxContextBuilder {
+	d.driver = driver
 	d.connectionString = connectionString
 
 	return d
@@ -39,7 +41,7 @@ func (d *DbSqlxContextBuilder) Build() *DbSqlxContext {
 
 type DbSqlxContext struct {
 	db            *sqlx.DB
-	tx            *sql.Tx
+	tx            *sqlx.Tx
 	isTransaction bool
 }
 
@@ -54,7 +56,7 @@ func (m *DbSqlxContext) SetTransaction(isTransaction bool) {
 	m.isTransaction = isTransaction
 
 	if m.isTransaction {
-		tx, err := m.db.Begin()
+		tx, err := m.db.Beginx()
 
 		if err != nil {
 			tmp := fmt.Sprintf("failed to beginning transaction, due to %s", err.Error())
@@ -70,22 +72,30 @@ func (m *DbSqlxContext) IsTransaction() bool {
 }
 
 func (m *DbSqlxContext) Db() interface{} {
-	return m.db
+	if m.isTransaction {
+		return m.tx
+	} else {
+		return m.db
+	}
 }
 
 func (m *DbSqlxContext) Begin() interface{} {
-	tx, err := m.db.Begin()
+	var err error
+	m.tx, err = m.db.Beginx()
 	if err != nil {
 		panic("failed to begin a transaction, error: " + err.Error())
 	}
+	m.isTransaction = true
 
-	return tx
+	return m.tx
 }
 
 func (m *DbSqlxContext) Commit() error {
+	m.isTransaction = false
 	return m.tx.Commit()
 }
 
 func (m *DbSqlxContext) Rollback() error {
+	m.isTransaction = false
 	return m.tx.Rollback()
 }

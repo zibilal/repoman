@@ -9,8 +9,7 @@ import (
 type Repository interface {
 	Finder
 	Updater
-	Creator
-	QueryMapper
+	Inserter
 }
 
 type QueryMapper interface {
@@ -19,22 +18,22 @@ type QueryMapper interface {
 }
 
 type Finder interface {
-	Find(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{},  error)
+	Find(dbContext persistence.DatabaseContext, data ...interface{}) (interface{}, error)
 }
 
 type Updater interface {
-	Update(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
+	Update(dbContext persistence.DatabaseContext, data ...interface{}) (interface{}, error)
 }
 
-type Creator interface {
-	Create(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
+type Inserter interface {
+	Insert(dbContext persistence.DatabaseContext, data ...interface{}) (interface{}, error)
 }
 
 type Deleter interface {
-	Delete(dbContext persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
+	Delete(dbContext persistence.DatabaseContext, data ...interface{}) (interface{}, error)
 }
 
-type RepoFunc func(context persistence.DatabaseContext, queryName string, data ...interface{}) (interface{}, error)
+type RepoFunc func(context persistence.DatabaseContext, input interface{}, data ...interface{}) (interface{}, error)
 
 type ExecuteQueryOutput struct {
 	Output map[int]interface{}
@@ -42,7 +41,7 @@ type ExecuteQueryOutput struct {
 
 type ExecuteQueryInput struct {
 	Data      []interface{}
-	QueryName string
+	Input     interface{}
 	Handler   RepoFunc
 }
 
@@ -58,17 +57,21 @@ func ExecuteQueryHandlerFunc(dbContext persistence.DatabaseContext, inputs ...Ex
 
 	outputMap = make(map[int]interface{})
 
+	dbContext.Begin()
+
 	for idx, input := range inputs {
-		tmp, err = input.Handler(dbContext, input.QueryName, input.Data...)
+		if len(input.Data) > 0 {
+			tmp, err = input.Handler(dbContext, input.Input, input.Data...)
+		} else {
+			tmp, err = input.Handler(dbContext, input.Input)
+		}
 
-		if dbContext.IsTransaction() && err != nil {
-			tmpError = dbContext.Rollback()
+		tmpError = dbContext.Rollback()
 
-			message = "unable to finish process due to %s"
+		message = "unable to finish process due to %s"
 
-			if tmpError != nil {
-				message += message + ", failed try to rollback due to %s"
-			}
+		if tmpError != nil {
+			message += message + ", failed try to rollback due to %s"
 
 			return nil, errors.New(message)
 		}

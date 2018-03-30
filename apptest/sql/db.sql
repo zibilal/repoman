@@ -1,0 +1,2 @@
+create database mytestdb;
+create table users (id int, username varchar(20), firstname varchar(50), lastname varchar(50), email varchar(50), created_by int(11), updated_by int(11), created_time datetime, updated_time datetime, primary key (id));
